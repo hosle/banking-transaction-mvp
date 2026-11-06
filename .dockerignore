@@ -1,0 +1,12 @@
+.git
+.gitignore
+.idea
+.vscode
+target
+*.iml
+*.log
+Dockerfile*
+README.md
+k8s
+performance
+

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Manage banking transactions">
+  <title>Transaction Manager</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="shell">
+      <p class="eyebrow">Banking operations</p>
+      <h1>Transaction Manager</h1>
+      <p class="subtitle">Create, review, correct, and archive transactions.</p>
+    </div>
+  </header>
+
+  <main class="shell layout">
+    <section class="card editor" aria-labelledby="form-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Transaction details</p>
+          <h2 id="form-title">Add transaction</h2>
+        </div>
+        <button id="cancel-edit" class="button button-quiet" type="button" hidden>Cancel edit</button>
+      </div>
+
+      <div id="form-message" class="message" role="alert" aria-live="polite" hidden></div>
+
+      <form id="transaction-form" novalidate>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="client-reference">Client reference</label>
+            <input id="client-reference" name="clientReference" type="text" maxlength="64"
+                   pattern="[A-Za-z0-9_-]+" autocomplete="off" required>
+            <small class="hint">Letters, numbers, underscores, and hyphens only.</small>
+            <small class="field-error" data-error-for="clientReference"></small>
+          </div>
+
+          <div class="field">
+            <label for="sender-account">Sender account</label>
+            <select id="sender-account" name="senderAccountId" required>
+              <option value="">Loading accounts…</option>
+            </select>
+            <small class="field-error" data-error-for="senderAccountId"></small>
+          </div>
+
+          <div class="field">
+            <label for="recipient-account">Recipient account</label>
+            <select id="recipient-account" name="recipientAccountId" required>
+              <option value="">Loading accounts…</option>
+            </select>
+            <small class="field-error" data-error-for="recipientAccountId"></small>
+          </div>
+
+          <div class="field">
+            <label for="amount">Amount</label>
+            <input id="amount" name="amount" type="number" min="0.0001" step="0.0001" required>
+            <small class="field-error" data-error-for="amount"></small>
+          </div>
+
+          <div class="field">
+            <label for="currency">Currency</label>
+            <select id="currency" name="currency" required>
+              <option value="SGD">SGD</option>
+              <option value="CNY">CNY</option>
+              <option value="USD">USD</option>
+              <option value="HKD">HKD</option>
+            </select>
+            <small class="field-error" data-error-for="currency"></small>
+          </div>
+
+          <div class="field">
+            <label for="category">Category</label>
+            <select id="category" name="category">
+              <option value="">No category</option>
+              <option value="TRANSFER">Transfer</option>
+              <option value="BILL">Bill</option>
+              <option value="SHOPPING">Shopping</option>
+              <option value="OTHER">Other</option>
+            </select>
+            <small class="field-error" data-error-for="category"></small>
+          </div>
+
+          <div class="field">
+            <label for="occurred-at">Occurred at</label>
+            <input id="occurred-at" name="occurredAt" type="datetime-local" step="1" required>
+            <small class="field-error" data-error-for="occurredAt"></small>
+          </div>
+
+          <div class="field field-wide">
+            <label for="description">Description <span class="optional">optional</span></label>
+            <textarea id="description" name="description" rows="3" maxlength="140"></textarea>
+            <div class="field-meta">
+              <small class="field-error" data-error-for="description"></small>
+              <small id="description-count" class="hint">0 / 140</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button id="save-transaction" class="button button-primary" type="submit">Create transaction</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card transactions" aria-labelledby="transactions-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Records</p>
+          <h2 id="transactions-title">Transactions</h2>
+        </div>
+        <button id="refresh-transactions" class="button button-secondary" type="button">Refresh</button>
+      </div>
+
+      <form id="filter-form" class="filters" aria-label="Transaction filters">
+        <div class="field">
+          <label for="filter-account">Account</label>
+          <select id="filter-account" name="accountId">
+            <option value="">All accounts</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-from">From <span class="optional">inclusive</span></label>
+          <input id="filter-from" name="from" type="datetime-local" step="1">
+        </div>
+        <div class="field">
+          <label for="filter-to">To <span class="optional">exclusive</span></label>
+          <input id="filter-to" name="to" type="datetime-local" step="1">
+        </div>
+        <div class="field">
+          <label for="filter-currency">Currency</label>
+          <select id="filter-currency" name="currency">
+            <option value="">All currencies</option>
+            <option value="SGD">SGD</option>
+            <option value="CNY">CNY</option>
+            <option value="USD">USD</option>
+            <option value="HKD">HKD</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filter-category">Category</label>
+          <select id="filter-category" name="category">
+            <option value="">All categories</option>
+            <option value="TRANSFER">Transfer</option>
+            <option value="BILL">Bill</option>
+            <option value="SHOPPING">Shopping</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="filter-actions">
+          <button class="button button-primary" type="submit">Apply filters</button>
+          <button id="clear-filters" class="button button-quiet" type="button">Clear</button>
+        </div>
+      </form>
+
+      <div id="list-message" class="message" role="alert" aria-live="polite" hidden></div>
+      <p id="loading-state" class="loading" role="status" aria-live="polite" hidden>Loading transactions…</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+          <tr>
+            <th scope="col">Reference</th>
+            <th scope="col">Route</th>
+            <th scope="col">Amount</th>
+            <th scope="col">Category</th>
+            <th scope="col">Occurred</th>
+            <th scope="col">Description</th>
+            <th scope="col"><span class="visually-hidden">Actions</span></th>
+          </tr>
+          </thead>
+          <tbody id="transaction-rows"></tbody>
+        </table>
+      </div>
+
+      <div id="empty-state" class="empty-state" hidden>
+        <h3>No transactions found</h3>
+        <p>Try changing the filters or create a new transaction.</p>
+      </div>
+
+      <nav class="pagination" aria-label="Transaction pages">
+        <button id="previous-page" class="button button-secondary" type="button">Previous</button>
+        <p id="page-summary">Page 1 of 1</p>
+        <button id="next-page" class="button button-secondary" type="button">Next</button>
+      </nav>
+    </section>
+  </main>
+
+  <footer class="shell site-footer">
+    <p>Assessment application · Data resets when the service restarts</p>
+  </footer>
+</body>
+</html>

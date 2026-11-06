@@ -7,6 +7,7 @@ import com.example.banking.error.ErrorCode;
 import com.example.banking.transaction.api.CreateTransactionRequest;
 import com.example.banking.transaction.api.TransactionFilterRequest;
 import com.example.banking.transaction.api.TransactionUpdateRequest;
+import com.example.banking.transaction.domain.BankTransaction;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.Set;
@@ -50,6 +51,11 @@ public class TransactionValidator {
     public void validateUpdate(TransactionUpdateRequest request) {
         requireSupportedCurrency(request.currency());
         requireNotFuture(request.occurredAt());
+    }
+
+    public void validateParticipants(BankTransaction transaction) {
+        requireActive(transaction.getSenderAccount(), "senderAccountId");
+        requireActive(transaction.getRecipientAccount(), "recipientAccountId");
     }
 
     public void validateFilter(TransactionFilterRequest filter) {

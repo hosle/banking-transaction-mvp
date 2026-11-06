@@ -82,6 +82,7 @@ public class TransactionService {
     @Transactional
     public TransactionResponse update(long transactionId, TransactionUpdateRequest request) {
         BankTransaction transaction = findVisible(transactionId);
+        validator.validateParticipants(transaction);
         validator.validateUpdate(request);
         transaction.update(
                 request.amount(),
@@ -96,6 +97,7 @@ public class TransactionService {
     @Transactional
     public void softDelete(long transactionId) {
         BankTransaction transaction = findVisible(transactionId);
+        validator.validateParticipants(transaction);
         transaction.softDelete(clock.millis());
     }
 

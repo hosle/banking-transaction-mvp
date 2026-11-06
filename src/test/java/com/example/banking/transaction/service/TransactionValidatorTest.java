@@ -12,6 +12,7 @@ import com.example.banking.error.ErrorCode;
 import com.example.banking.transaction.api.CreateTransactionRequest;
 import com.example.banking.transaction.api.TransactionFilterRequest;
 import com.example.banking.transaction.api.TransactionUpdateRequest;
+import com.example.banking.transaction.domain.BankTransaction;
 import com.example.banking.transaction.domain.TransactionCategory;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -114,6 +115,21 @@ class TransactionValidatorTest {
     }
 
     @Test
+    void rejectsInactiveParticipantsOnExistingTransaction() {
+        Account active = activeAccount("ACC-001");
+        Account inactive = new Account("ACC-999", "CURRENT", AccountStatus.INACTIVE);
+
+        assertApplicationError(
+                () -> validator.validateParticipants(transaction(inactive, active)),
+                ErrorCode.ACCOUNT_INACTIVE,
+                "senderAccountId 'ACC-999' is inactive");
+        assertApplicationError(
+                () -> validator.validateParticipants(transaction(active, inactive)),
+                ErrorCode.ACCOUNT_INACTIVE,
+                "recipientAccountId 'ACC-999' is inactive");
+    }
+
+    @Test
     void rejectsInvalidRangeAndUnknownFilterAccount() {
         TransactionFilterRequest invalidRange = new TransactionFilterRequest();
         invalidRange.setFrom(200L);
@@ -147,6 +163,19 @@ class TransactionValidatorTest {
 
     private static Account activeAccount(String id) {
         return new Account(id, "CURRENT", AccountStatus.ACTIVE);
+    }
+
+    private static BankTransaction transaction(Account sender, Account recipient) {
+        return BankTransaction.create(
+                "EXISTING-REF",
+                sender,
+                recipient,
+                new BigDecimal("10.00"),
+                "SGD",
+                TransactionCategory.TRANSFER,
+                "test",
+                NOW,
+                NOW);
     }
 
     private static void assertApplicationError(

@@ -14,8 +14,10 @@ import com.example.banking.account.Account;
 import com.example.banking.account.AccountRepository;
 import com.example.banking.account.AccountStatus;
 import com.example.banking.transaction.domain.BankTransaction;
+import com.example.banking.transaction.domain.TransactionCategory;
 import com.example.banking.transaction.persistence.TransactionRepository;
 import com.jayway.jsonpath.JsonPath;
+import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -166,6 +168,40 @@ class TransactionApiIntegrationTest {
                 .andExpect(jsonPath("$.instance").value("/api/v1/transactions"))
                 .andExpect(jsonPath("$.timestamp").isNumber())
                 .andExpect(jsonPath("$.fieldErrors[?(@.field == 'amount')].message").isNotEmpty());
+    }
+
+    @Test
+    void defensivelyRejectsUpdateAndDeleteWhenPersistedParticipantIsInactive() throws Exception {
+        Account inactiveSender = accountRepository.findById("ACC-999").orElseThrow();
+        Account activeRecipient = accountRepository.findById("ACC-002").orElseThrow();
+        BankTransaction transaction = transactionRepository.saveAndFlush(BankTransaction.create(
+                "DEFENSIVE-STATUS-CHECK",
+                inactiveSender,
+                activeRecipient,
+                new BigDecimal("10.00"),
+                "SGD",
+                TransactionCategory.TRANSFER,
+                "invalid persisted fixture",
+                OCCURRED_AT,
+                OCCURRED_AT));
+
+        mockMvc.perform(put("/api/v1/transactions/{id}", transaction.getTransactionId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateJson("25.00", "USD", "must not update")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("ACCOUNT_INACTIVE"))
+                .andExpect(jsonPath("$.detail").value(
+                        org.hamcrest.Matchers.containsString("senderAccountId 'ACC-999' is inactive")));
+
+        mockMvc.perform(delete("/api/v1/transactions/{id}", transaction.getTransactionId()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("ACCOUNT_INACTIVE"))
+                .andExpect(jsonPath("$.detail").value(
+                        org.hamcrest.Matchers.containsString("senderAccountId 'ACC-999' is inactive")));
+
+        BankTransaction unchanged = transactionRepository.findById(transaction.getTransactionId()).orElseThrow();
+        assertThat(unchanged.getAmount()).isEqualByComparingTo("10.00");
+        assertThat(unchanged.getDeletedAt()).isNull();
     }
 
     @Test
